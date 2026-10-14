@@ -117,6 +117,10 @@ class App {
     audio.playMusic('menu');
     window.__app = this; // used by automated tests
     window.__test = { app: this, input, audio, LEVELS };
+    // status lines (visible in `adb logcat -s DashKingdom`; used by the emulator CI test)
+    const gl = this.renderer.getContext();
+    console.log(`[DK] boot ok webgl=${this.renderer.capabilities.isWebGL2 ? 2 : 1} quality=${this.quality} gpu=${gl.getParameter(gl.RENDERER)} size=${window.innerWidth}x${window.innerHeight}`);
+    setInterval(() => { if (this.state === 'playing' && this.game) console.log(`[DK] playing level=${this.game.def.id} fps=${this.fps.toFixed(1)} z=${this.game.player.pos.z.toFixed(1)}`); }, 5000);
   }
 
   resolveQuality() {
@@ -257,6 +261,7 @@ class App {
         this.save.data.stats.plays++;
         this.save.persist();
         this.state = 'playing';
+        console.log(`[DK] level loaded ${def.id} in ${Math.round(this.loadMs)}ms`);
         this.ui.showHud(true);
         input.setVisible(true);
         input.releaseAll();

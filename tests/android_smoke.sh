@@ -44,6 +44,10 @@ shot 05_resumed
 adb logcat -d > "$OUT/logcat.txt"
 grep -E "FATAL EXCEPTION|AndroidRuntime: .*$PKG" "$OUT/logcat.txt" && fail "crash in logcat"
 grep -E "DashKingdom" "$OUT/logcat.txt" > "$OUT/game_console.txt" || true
+echo "---- game console (logcat) ----"; grep -E "\[DK\]|rro|rror" "$OUT/game_console.txt" | head -40
+grep -q "\[DK\] boot ok webgl=" "$OUT/game_console.txt" || fail "game did not boot (no WebGL?)"
+grep -q "\[DK\] level loaded green" "$OUT/game_console.txt" || fail "stage 1 did not load"
+grep -q "\[DK\] playing level=green" "$OUT/game_console.txt" || fail "no gameplay frames reported"
 grep -iE "uncaught|pageerror|Erro" "$OUT/game_console.txt" && echo "WARNING: JS errors logged (see game_console.txt)" | tee -a "$OUT/result.txt"
 adb shell am force-stop "$PKG"
 echo "PASS: install, launch, start stage, input, pause (back), background/resume" | tee -a "$OUT/result.txt"
