@@ -1,0 +1,81 @@
+#!/bin/bash
+# Installs the APK on a running emulator/device, launches it, plays briefly and collects
+# screenshots + logcat into emu-results/. Fails on install failure, crash or process death.
+set -u
+APK="$1"; PKG=com.sdavtff.dashkingdom; OUT=emu-results
+mkdir -p "$OUT"
+fail() { echo "FAIL: $*" | tee -a "$OUT/result.txt"; adb logcat -d > "$OUT/logcat.txt"; exit 1; }
+shot() {
+  adb exec-out screencap -p > "$OUT/$1.png"; echo "screenshot $1"
+  # small JPEG embedded in the CI log (base64) so it can be inspected without artifact access
+  if command -v convert >/dev/null; then convert "$OUT/$1.png" -resize 560x -quality 55 "$OUT/$1.jpg" && echo "IMG_BEGIN $1" && base64 -w0 "$OUT/$1.jpg" && echo && echo "IMG_END $1"; fi
+}
+alive() { [ -n "$(adb shell pidof $PKG | tr -d '\r')" ]; }
+
+adb shell getprop ro.build.version.release | sed 's/^/Android version: /' | tee "$OUT/result.txt"
+adb shell getprop ro.product.cpu.abi | sed 's/^/ABI: /' | tee -a "$OUT/result.txt"
+adb shell dumpsys package com.google.android.webview | grep -m1 versionName | sed 's/^ */WebView /' | tee -a "$OUT/result.txt"
+adb install -r "$APK" | tee -a "$OUT/result.txt" || fail "adb install"
+adb shell pm list packages | grep -q "$PKG" || fail "package not installed"
+adb logcat -c
+adb shell am start -W -n "$PKG/.MainActivity" | tee -a "$OUT/result.txt"
+sleep 35
+alive || fail "process died after launch"
+shot 01_main_menu
+SIZE=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); A=${SIZE%x*}; B=${SIZE#*x}
+W=$(( A > B ? A : B )); H=$(( A > B ? B : A ))
+echo "screen ${W}x${H} (landscape)" | tee -a "$OUT/result.txt"
+adb shell dumpsys input | grep -iE "SurfaceOrientation|orientation=" | head -3
+adb shell dumpsys window displays | grep -E "cur=|app=" | head -2
+waitlog() { # pattern timeout_s
+  for i in $(seq 1 $2); do adb logcat -d -s DashKingdom | grep -q "$1" && return 0; sleep 1; done; return 1; }
+# tap "JOGAR" (left column, ~37% height)
+adb shell input tap $(( W * 22 / 100 )) $(( H * 37 / 100 ))
+if ! waitlog "\[DK\] action" 10; then
+  echo "tap not registered, retrying" | tee -a "$OUT/result.txt"
+  adb shell input tap $(( W * 22 / 100 )) $(( H * 37 / 100 ))
+fi
+TAP_OK=0
+if waitlog "\[DK\] action" 10; then TAP_OK=1; echo "menu tap: registered" | tee -a "$OUT/result.txt"; else
+  echo "menu tap: NOT registered; focused window:" | tee -a "$OUT/result.txt"
+  adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp" | tee -a "$OUT/result.txt"
+  shot 01b_tap_not_registered
+  # dismiss possible system dialogs, then open stage 1 directly via the autostart extra
+  adb shell input keyevent KEYCODE_ENTER; adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1
+  adb shell am force-stop "$PKG"; sleep 2
+  adb shell am start -W -n "$PKG/.MainActivity" -e autostart 0 | tee -a "$OUT/result.txt"
+fi
+T0=$(date +%s)
+waitlog "\[DK\] level loaded green" 180 && echo "stage 1 loaded after $(( $(date +%s) - T0 ))s (wall clock, software GPU)" | tee -a "$OUT/result.txt"
+sleep 12
+alive || fail "process died after starting stage 1"
+shot 02_stage1
+# hold the jump button a few times (bottom right)
+for i in 1 2 3; do adb shell input tap $(( W * 90 / 100 )) $(( H * 80 / 100 )); sleep 1; done
+# swipe on the joystick zone to run forward
+adb shell input swipe $(( W * 15 / 100 )) $(( H * 75 / 100 )) $(( W * 15 / 100 )) $(( H * 55 / 100 )) 4000
+sleep 7
+shot 03_after_input
+MAXZ=$(adb logcat -d -s DashKingdom | grep -o "playing level=green fps=[0-9.]* z=[-0-9.]*" | sed 's/.*z=//' | sort -g | tail -1)
+echo "max player z after joystick swipe: ${MAXZ:-none}" | tee -a "$OUT/result.txt"
+adb shell input keyevent KEYCODE_BACK
+sleep 4
+shot 04_pause_via_back
+alive || fail "process died after back key"
+# background / foreground
+adb shell input keyevent KEYCODE_HOME; sleep 3
+adb shell am start -n "$PKG/.MainActivity"; sleep 6
+alive || fail "process died after resume"
+shot 05_resumed
+adb logcat -d > "$OUT/logcat.txt"
+grep -E "FATAL EXCEPTION|AndroidRuntime: .*$PKG" "$OUT/logcat.txt" && fail "crash in logcat"
+grep -E "DashKingdom" "$OUT/logcat.txt" > "$OUT/game_console.txt" || true
+echo "---- game console (logcat) ----"; grep -E "\[DK\]|rro|rror" "$OUT/game_console.txt" | head -40
+grep -q "\[DK\] boot ok webgl=" "$OUT/game_console.txt" || fail "game did not boot (no WebGL?)"
+grep -q "\[DK\] level loaded green" "$OUT/game_console.txt" || fail "stage 1 did not load"
+grep -q "\[DK\] playing level=green" "$OUT/game_console.txt" || fail "no gameplay frames reported"
+grep -iE "uncaught|pageerror|Erro" "$OUT/game_console.txt" && echo "WARNING: JS errors logged (see game_console.txt)" | tee -a "$OUT/result.txt"
+[ "$TAP_OK" = 1 ] || fail "menu tap on JOGAR was not delivered to the game"
+python3 -c "import sys; sys.exit(0 if float('${MAXZ:-0}') > 1.0 else 1)" || fail "joystick swipe did not move the player"
+adb shell am force-stop "$PKG"
+echo "PASS: install, launch, start stage, input, pause (back), background/resume" | tee -a "$OUT/result.txt"

@@ -1,0 +1,83 @@
+name: Android build & emulator test
+
+on:
+  push:
+    branches: [main, 'ccr-*']
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Bundle web game
+        run: cd game && npm ci && npm run build
+      - name: Gradle build (Android Studio project)
+        run: cd android && chmod +x gradlew && ./gradlew --no-daemon assembleDebug
+      - name: Check committed APKs
+        run: |
+          ls -la dist/
+          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)/aapt2 dump badging dist/DashKingdom3D-v1.0.0-release.apk | head -5
+          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)/apksigner verify --verbose dist/DashKingdom3D-v1.0.0-release.apk
+          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)/zipalign -c -v 4 dist/DashKingdom3D-v1.0.0-release.apk | tail -2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apks
+          path: |
+            dist/*.apk
+            android/app/build/outputs/apk/debug/app-debug.apk
+
+  emulator-test:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: apks, path: apks }
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install & launch on Android 11 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          profile: pixel_4
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: bash tests/android_smoke.sh apks/dist/DashKingdom3D-v1.0.0-release.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: emulator-results
+          path: emu-results/
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: [build, emulator-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: Dash Kingdom 3D v1.0.0
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          files: |
+            dist/DashKingdom3D-v1.0.0-release.apk
+            dist/DashKingdom3D-v1.0.0-debug.apk
+            dist/DashKingdom3D-source-v1.0.0.zip
+          body_path: docs/RELEASE_NOTES.md

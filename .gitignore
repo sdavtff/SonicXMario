@@ -1,0 +1,10 @@
+game/node_modules/
+.toolchain/
+build/
+*.idsig
+tests/node_modules/
+.DS_Store
+keystore/
+*.jks
+*.keystore
+keystore.properties
