@@ -8,14 +8,14 @@ Jogo de plataforma 3D para Android que mistura **velocidade, loops, molas, trilh
 
 | Arquivo | Uso | Link |
 |---|---|---|
-| `DashKingdom3D-v1.0.0-release.apk` | **Instalar no celular** (assinado, v2+v3) | [baixar](https://github.com/sdavtff/SonicXMario/raw/ccr-20886c48-ihmmi5/dist/DashKingdom3D-v1.0.0-release.apk) |
-| `DashKingdom3D-v1.0.0-debug.apk` | Depuração (WebView inspecionável via `chrome://inspect`) | [baixar](https://github.com/sdavtff/SonicXMario/raw/ccr-20886c48-ihmmi5/dist/DashKingdom3D-v1.0.0-debug.apk) |
-| `DashKingdom3D-source-v1.0.0.zip` | Código-fonte completo | [baixar](https://github.com/sdavtff/SonicXMario/raw/ccr-20886c48-ihmmi5/dist/DashKingdom3D-source-v1.0.0.zip) |
+| `DashKingdom3D-v1.0.0-release.apk` | **Instalar no celular** (assinado, v2+v3) | [baixar](https://github.com/sdavtff/SonicXMario/releases/download/v1.0.0/DashKingdom3D-v1.0.0-release.apk) |
+| `DashKingdom3D-v1.0.0-debug.apk` | Depuração (WebView inspecionável via `chrome://inspect`) | [baixar](https://github.com/sdavtff/SonicXMario/releases/download/v1.0.0/DashKingdom3D-v1.0.0-debug.apk) |
+| `DashKingdom3D-source-v1.0.0.zip` | Código-fonte completo | [baixar](https://github.com/sdavtff/SonicXMario/releases/download/v1.0.0/DashKingdom3D-source-v1.0.0.zip) |
 
 - **Versão:** 1.0.0 (versionCode 1) · **Pacote:** `com.sdavtff.dashkingdom`
 - **Android mínimo:** 7.0 (API 24) · **Alvo:** Android 14 (API 34)
 - **Arquitetura:** independente de arquitetura (Java + WebGL, sem código nativo) — roda em **ARM64 (arm64-v8a)**, ARMv7 e x86_64
-- **Tamanho:** ~0,7 MB · **Funciona offline** · **Permissões:** apenas vibração
+- **Tamanho:** 0,71 MB (742.360 bytes) · SHA-256 `09efd362…c3ef1c` · **Funciona offline** · **Permissões:** apenas vibração
 - Requisitos: Android System WebView/Chrome atualizado com suporte a WebGL (padrão em praticamente todos os aparelhos desde 2017)
 
 Instruções de instalação e solução de problemas: [docs/INSTALACAO.md](docs/INSTALACAO.md) · Relatório de testes: [docs/TESTES.md](docs/TESTES.md)
