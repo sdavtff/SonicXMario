@@ -201,6 +201,7 @@ class App {
 
   // ---------------------------------------------------------------- menu actions
   action(act, arg) {
+    console.log(`[DK] action ${act}${arg ? ' ' + arg : ''}`);
     switch (act) {
       case 'play': {
         const s = this.save.data;
@@ -248,6 +249,7 @@ class App {
     this.ui.hideScreens();
     this.ui.loading(true, `${i + 1}. ${def.name}`, TIPS[Math.floor(Math.random() * TIPS.length)]);
     this.state = 'loading';
+    console.log(`[DK] loading level ${def.id}`);
     audio.stopMusic();
     // give the browser a frame to paint the loading screen
     setTimeout(() => {
@@ -267,7 +269,7 @@ class App {
         input.releaseAll();
         this.ui.fade(0.5);
       } catch (e) {
-        console.error(e);
+        console.error('[DK] level load failed: ' + (e && e.stack || e));
         this.ui.error('Falha ao carregar a fase: ' + (e && e.message));
         this.state = 'menu';
       }

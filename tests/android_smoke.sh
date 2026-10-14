@@ -21,9 +21,17 @@ shot 01_main_menu
 SIZE=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); A=${SIZE%x*}; B=${SIZE#*x}
 W=$(( A > B ? A : B )); H=$(( A > B ? B : A ))
 echo "screen ${W}x${H} (landscape)" | tee -a "$OUT/result.txt"
+waitlog() { # pattern timeout_s
+  for i in $(seq 1 $2); do adb logcat -d -s DashKingdom | grep -q "$1" && return 0; sleep 1; done; return 1; }
 # tap "JOGAR" (left column, ~37% height)
 adb shell input tap $(( W * 22 / 100 )) $(( H * 37 / 100 ))
-sleep 40
+if ! waitlog "\[DK\] action" 10; then
+  echo "tap not registered, retrying" | tee -a "$OUT/result.txt"
+  adb shell input tap $(( W * 22 / 100 )) $(( H * 37 / 100 ))
+fi
+T0=$(date +%s)
+waitlog "\[DK\] level loaded green" 180 && echo "stage 1 loaded after $(( $(date +%s) - T0 ))s (wall clock, software GPU)" | tee -a "$OUT/result.txt"
+sleep 12
 alive || fail "process died after starting stage 1"
 shot 02_stage1
 # hold the jump button a few times (bottom right)
