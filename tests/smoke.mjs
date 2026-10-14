@@ -1,0 +1,13 @@
+import { chromium } from '/opt/node-tools/node_modules/playwright/index.mjs';
+const url = process.argv[2] || 'http://127.0.0.1:8123/index.html';
+const out = process.argv[3] || '/tmp/shots';
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
+const page = await browser.newPage({ viewport: { width: 960, height: 432 }, deviceScaleFactor: 1, hasTouch: true });
+const errors = [];
+page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(m.type() + ': ' + m.text()); });
+page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
+await page.goto(url);
+await page.waitForTimeout(2500);
+await page.screenshot({ path: out + '/menu.png' });
+console.log(JSON.stringify(errors, null, 1));
+await browser.close();
