@@ -5,7 +5,11 @@ set -u
 APK="$1"; PKG=com.sdavtff.dashkingdom; OUT=emu-results
 mkdir -p "$OUT"
 fail() { echo "FAIL: $*" | tee -a "$OUT/result.txt"; adb logcat -d > "$OUT/logcat.txt"; exit 1; }
-shot() { adb exec-out screencap -p > "$OUT/$1.png"; echo "screenshot $1"; }
+shot() {
+  adb exec-out screencap -p > "$OUT/$1.png"; echo "screenshot $1"
+  # small JPEG embedded in the CI log (base64) so it can be inspected without artifact access
+  if command -v convert >/dev/null; then convert "$OUT/$1.png" -resize 560x -quality 55 "$OUT/$1.jpg" && echo "IMG_BEGIN $1" && base64 -w0 "$OUT/$1.jpg" && echo && echo "IMG_END $1"; fi
+}
 alive() { [ -n "$(adb shell pidof $PKG | tr -d '\r')" ]; }
 
 adb shell getprop ro.build.version.release | sed 's/^/Android version: /' | tee "$OUT/result.txt"
@@ -21,6 +25,8 @@ shot 01_main_menu
 SIZE=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); A=${SIZE%x*}; B=${SIZE#*x}
 W=$(( A > B ? A : B )); H=$(( A > B ? B : A ))
 echo "screen ${W}x${H} (landscape)" | tee -a "$OUT/result.txt"
+adb shell dumpsys input | grep -iE "SurfaceOrientation|orientation=" | head -3
+adb shell dumpsys window displays | grep -E "cur=|app=" | head -2
 waitlog() { # pattern timeout_s
   for i in $(seq 1 $2); do adb logcat -d -s DashKingdom | grep -q "$1" && return 0; sleep 1; done; return 1; }
 # tap "JOGAR" (left column, ~37% height)

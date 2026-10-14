@@ -159,6 +159,16 @@ class App {
   bindSystem() {
     window.addEventListener('resize', () => this.onResize());
     window.addEventListener('orientationchange', () => setTimeout(() => this.onResize(), 200));
+    // input diagnostics (first few events only; visible in logcat)
+    this.evLog = 0;
+    for (const t of ['pointerdown', 'touchstart', 'mousedown', 'click']) {
+      window.addEventListener(t, (e) => {
+        if (this.evLog++ < 12) {
+          const p = e.touches ? e.touches[0] : e;
+          console.log(`[DK] input ${t} ${e.pointerType || ''} ${p ? Math.round(p.clientX) + ',' + Math.round(p.clientY) : ''} target=${e.target && (e.target.id || e.target.className || e.target.tagName)}`);
+        }
+      }, { capture: true, passive: true });
+    }
     const unlock = () => audio.unlock();
     window.addEventListener('pointerdown', unlock, { capture: true });
     window.addEventListener('keydown', unlock, { capture: true });
