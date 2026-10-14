@@ -12,20 +12,22 @@ Este documento lista **somente testes que foram realmente executados**, com o re
 | APK conferido com SDK oficial | GitHub Actions: `aapt2 dump badging`, `apksigner verify`, `zipalign -c 4` (build-tools atuais) | ✅ etapa concluída com sucesso |
 
 ## 2. Instalação e execução em Android (emulador)
-Workflow `.github/workflows/android.yml`, script `tests/android_smoke.sh`, emulador **Android 11 (API 30), x86_64, perfil Pixel 4, 2280×1080, WebView 83**, renderização por software (SwiftShader).
+Workflow `.github/workflows/android.yml`, script `tests/android_smoke.sh`, emulador **Android 11 (API 30), x86_64, perfil Pixel 4, 2280×1080, Android System WebView 83**, GPU por software (SwiftShader). Execução final aprovada: run 38575559049.
 
-| Etapa | Resultado (execução 38569917592) |
+| Etapa | Resultado |
 |---|---|
 | `adb install` do APK de **release** | ✅ `Success` |
-| Abertura (cold start) | ✅ `Status: ok`, abriu em 1,8 s |
-| Processo vivo após 35 s no menu | ✅ |
-| Toque em JOGAR → fase 1, processo vivo após 40 s | ✅ |
-| Toques no botão PULO + arraste no joystick | ✅ sem travamento |
-| Botão Voltar (pausa) | ✅ processo vivo |
-| Ir para segundo plano (Home) e voltar | ✅ processo vivo |
+| Abertura (cold start) | ✅ `Status: ok`, ~1,8–3 s |
+| Jogo inicia com WebGL (logcat `[DK] boot ok webgl=2`) | ✅ |
+| **Toque real** no botão JOGAR do menu chega ao jogo | ✅ |
+| Fase 1 carrega (`[DK] level loaded green`, ~0,8–1,3 s) | ✅ |
+| Loop de jogo rodando (`[DK] playing … fps=`) | ✅ 11–15 FPS **com GPU por software** do emulador |
+| **Arraste no joystick move o personagem** | ✅ posição z 0 → 53,8 |
+| Toques nos botões chegam aos botões (alvo correto) | ✅ |
+| Botão Voltar (pausa), Home e voltar ao app | ✅ processo vivo |
 | Nenhum `FATAL EXCEPTION` no logcat | ✅ |
 
-Na segunda execução (após este commit) o teste também **exige** no logcat as linhas do jogo `[DK] boot ok webgl=…`, `[DK] level loaded green` e `[DK] playing level=green fps=…` — ou seja, que o WebGL iniciou, a fase carregou e quadros de jogo foram processados. Resultado: ver seção "Resultado da execução com verificação de logcat" abaixo.
+**Bug real encontrado por este teste e corrigido:** no WebView 83 os menus e os controles de toque ficavam com tamanho zero, porque o CSS usava `inset: 0` (só suportado a partir do Chrome 87) e `gap` em flexbox (Chrome 84). Em aparelhos com WebView desatualizado o jogo abriria sem menu clicável e sem controles. Corrigido com propriedades equivalentes compatíveis e um fallback de espaçamento; o teste agora **exige** que o toque no menu e o joystick funcionem.
 
 ## 3. Jogabilidade — autopiloto (todas as fases, os dois personagens)
 `tests/playthrough.mjs` + `tests/bot.js`: o jogo roda no Chromium (WebGL/SwiftShader) e um piloto automático joga usando o **mesmo joystick e botões virtuais** do jogador, com passo fixo de 1/60 s, seguindo pontos de rota (`tests/routes.mjs`), pulando buracos/degraus/inimigos, esperando plataformas móveis/que piscam/esmagadores e lutando contra os chefes (desviar de ondas de choque, lasers, projéteis e áreas de impacto; atacar quando o chefe fica vulnerável).
@@ -71,6 +73,7 @@ Antes da otimização eram 237–336 chamadas. Memória JS ~25–29 MB. APK de 0
 ## 6. O que NÃO foi testado
 - **Celular físico real.** Não havia aparelho disponível. FPS, aquecimento e consumo de bateria em celulares reais não foram medidos. A qualidade "Automática" reduz a resolução sozinha se o FPS ficar abaixo de ~75% da meta.
 - **Android 7–10 e 12–15** (só Android 11 no emulador). **ARM64 real** não foi testado (o emulador é x86_64); o APK não tem código nativo, então o mesmo arquivo serve para ARM64.
+- O FPS do emulador (11–15) usa GPU por software e não indica o desempenho de um celular com GPU real.
 - Áudio audível no aparelho (o áudio é gerado por WebAudio; sem erros, mas ninguém ouviu no Android).
 - Gamepad físico.
 - Os segredos/medalhas opcionais foram projetados e posicionados com verificação de alcance por cálculo, mas o autopiloto segue apenas o caminho principal.
