@@ -91,7 +91,9 @@ public class MainActivity extends Activity {
 
         setContentView(webView);
         hideSystemUi();
-        webView.loadUrl(ORIGIN + "index.html");
+        // optional: "autostart" extra opens a stage directly (used by automated device tests)
+        String auto = getIntent() != null ? getIntent().getStringExtra("autostart") : null;
+        webView.loadUrl(ORIGIN + "index.html" + (auto != null && auto.matches("[0-4]") ? "?autostart=" + auto : ""));
     }
 
     @SuppressWarnings("deprecation")

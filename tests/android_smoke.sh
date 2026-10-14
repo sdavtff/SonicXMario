@@ -29,6 +29,15 @@ if ! waitlog "\[DK\] action" 10; then
   echo "tap not registered, retrying" | tee -a "$OUT/result.txt"
   adb shell input tap $(( W * 22 / 100 )) $(( H * 37 / 100 ))
 fi
+if waitlog "\[DK\] action" 10; then echo "menu tap: registered" | tee -a "$OUT/result.txt"; else
+  echo "menu tap: NOT registered; focused window:" | tee -a "$OUT/result.txt"
+  adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp" | tee -a "$OUT/result.txt"
+  shot 01b_tap_not_registered
+  # dismiss possible system dialogs, then open stage 1 directly via the autostart extra
+  adb shell input keyevent KEYCODE_ENTER; adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1
+  adb shell am force-stop "$PKG"; sleep 2
+  adb shell am start -W -n "$PKG/.MainActivity" -e autostart 0 | tee -a "$OUT/result.txt"
+fi
 T0=$(date +%s)
 waitlog "\[DK\] level loaded green" 180 && echo "stage 1 loaded after $(( $(date +%s) - T0 ))s (wall clock, software GPU)" | tee -a "$OUT/result.txt"
 sleep 12

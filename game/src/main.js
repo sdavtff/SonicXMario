@@ -120,6 +120,8 @@ class App {
     // status lines (visible in `adb logcat -s DashKingdom`; used by the emulator CI test)
     const gl = this.renderer.getContext();
     console.log(`[DK] boot ok webgl=${this.renderer.capabilities.isWebGL2 ? 2 : 1} quality=${this.quality} gpu=${gl.getParameter(gl.RENDERER)} size=${window.innerWidth}x${window.innerHeight}`);
+    const auto = new URLSearchParams(location.search).get('autostart');
+    if (auto !== null && /^[0-4]$/.test(auto)) { this.save.data.unlocked = Math.max(this.save.data.unlocked, +auto + 1); setTimeout(() => this.startLevel(+auto), 500); }
     setInterval(() => { if (this.state === 'playing' && this.game) console.log(`[DK] playing level=${this.game.def.id} fps=${this.fps.toFixed(1)} z=${this.game.player.pos.z.toFixed(1)}`); }, 5000);
   }
 
