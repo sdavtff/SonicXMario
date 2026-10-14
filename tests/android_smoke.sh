@@ -35,7 +35,8 @@ if ! waitlog "\[DK\] action" 10; then
   echo "tap not registered, retrying" | tee -a "$OUT/result.txt"
   adb shell input tap $(( W * 22 / 100 )) $(( H * 37 / 100 ))
 fi
-if waitlog "\[DK\] action" 10; then echo "menu tap: registered" | tee -a "$OUT/result.txt"; else
+TAP_OK=0
+if waitlog "\[DK\] action" 10; then TAP_OK=1; echo "menu tap: registered" | tee -a "$OUT/result.txt"; else
   echo "menu tap: NOT registered; focused window:" | tee -a "$OUT/result.txt"
   adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp" | tee -a "$OUT/result.txt"
   shot 01b_tap_not_registered
@@ -53,8 +54,10 @@ shot 02_stage1
 for i in 1 2 3; do adb shell input tap $(( W * 90 / 100 )) $(( H * 80 / 100 )); sleep 1; done
 # swipe on the joystick zone to run forward
 adb shell input swipe $(( W * 15 / 100 )) $(( H * 75 / 100 )) $(( W * 15 / 100 )) $(( H * 55 / 100 )) 4000
-sleep 2
+sleep 7
 shot 03_after_input
+MAXZ=$(adb logcat -d -s DashKingdom | grep -o "playing level=green fps=[0-9.]* z=[-0-9.]*" | sed 's/.*z=//' | sort -g | tail -1)
+echo "max player z after joystick swipe: ${MAXZ:-none}" | tee -a "$OUT/result.txt"
 adb shell input keyevent KEYCODE_BACK
 sleep 4
 shot 04_pause_via_back
@@ -72,5 +75,7 @@ grep -q "\[DK\] boot ok webgl=" "$OUT/game_console.txt" || fail "game did not bo
 grep -q "\[DK\] level loaded green" "$OUT/game_console.txt" || fail "stage 1 did not load"
 grep -q "\[DK\] playing level=green" "$OUT/game_console.txt" || fail "no gameplay frames reported"
 grep -iE "uncaught|pageerror|Erro" "$OUT/game_console.txt" && echo "WARNING: JS errors logged (see game_console.txt)" | tee -a "$OUT/result.txt"
+[ "$TAP_OK" = 1 ] || fail "menu tap on JOGAR was not delivered to the game"
+python3 -c "import sys; sys.exit(0 if float('${MAXZ:-0}') > 1.0 else 1)" || fail "joystick swipe did not move the player"
 adb shell am force-stop "$PKG"
 echo "PASS: install, launch, start stage, input, pause (back), background/resume" | tee -a "$OUT/result.txt"

@@ -2,12 +2,12 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
 html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #1b3a8c; touch-action: none;
   font-family: "Trebuchet MS", "Segoe UI", Roboto, Arial, sans-serif; color: #fff; overscroll-behavior: none; }
-canvas#gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+canvas#gl { position: fixed; top: 0; right: 0; bottom: 0; left: 0; width: 100vw; height: 100vh; display: block; }
 .hidden { display: none !important; }
 :root { --u: min(1vh, 0.56vw); --safe-l: env(safe-area-inset-left, 0px); --safe-r: env(safe-area-inset-right, 0px); }
 
 /* ---------- boot / loading ---------- */
-#boot, #loading { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center;
+#boot, #loading { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: radial-gradient(circle at 50% 40%, #2e7be6, #1b3a8c 70%); }
 .boot-logo { font-weight: 900; font-size: calc(var(--u) * 8); letter-spacing: 2px; text-shadow: 0 4px 0 #0b1d4d; margin-bottom: 3vh; }
 .spinner { width: calc(var(--u) * 9); height: calc(var(--u) * 9); border-radius: 50%; border: calc(var(--u) * 1.4) solid rgba(255,210,63,0.25);
@@ -18,8 +18,8 @@ canvas#gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: blo
 .load-box p { font-size: calc(var(--u) * 3.6); opacity: 0.9; max-width: 70vw; margin: 0 auto; }
 
 /* ---------- generic ---------- */
-#screens { position: fixed; inset: 0; z-index: 30; }
-.screen { position: absolute; inset: 0; padding: 3vh calc(3vw + var(--safe-l)) 3vh calc(3vw + var(--safe-r)); display: flex; flex-direction: column; overflow-y: auto; touch-action: pan-y; }
+#screens { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 30; }
+.screen { position: absolute; top: 0; right: 0; bottom: 0; left: 0; padding: 3vh calc(3vw + var(--safe-l)) 3vh calc(3vw + var(--safe-r)); display: flex; flex-direction: column; overflow-y: auto; touch-action: pan-y; }
 .screen-chars, .screen-levels, .screen-settings, .screen-credits, .screen-ending { background: rgba(10, 20, 60, 0.55); backdrop-filter: blur(2px); }
 .screen-pause, .screen-results, .screen-gameover { background: rgba(0, 0, 0, 0.45); align-items: center; justify-content: center; }
 .scr-title { font-size: calc(var(--u) * 7); margin: 0 0 2vh; text-shadow: 0 4px 0 #0b1d4d; text-align: center; }
@@ -94,7 +94,7 @@ canvas#gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: blo
 .set-row input[type=checkbox] { width: calc(var(--u) * 6); height: calc(var(--u) * 6); accent-color: #ffd23f; }
 .set-row select { font: inherit; font-size: calc(var(--u) * 3.2); padding: 0.6vh 1vw; border-radius: 1vh; max-width: 24vw; }
 .note { font-size: calc(var(--u) * 2.8); opacity: 0.8; }
-.modal { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; }
+.modal { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 60; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; }
 .modal .panel { text-align: center; font-size: calc(var(--u) * 4); max-width: 70vw; }
 .modal .btn { display: inline-block; margin: 1vh 1vw; }
 .credits { font-size: calc(var(--u) * 3.4); line-height: 1.4; max-width: 86vw; margin: 0 auto; }
@@ -122,7 +122,7 @@ canvas#gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: blo
 @keyframes rise { from { transform: translateY(20vh); opacity: 0; } }
 
 /* ---------- HUD ---------- */
-#hud { position: fixed; inset: 0; z-index: 20; pointer-events: none; }
+#hud { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 20; pointer-events: none; }
 .hud-tl { position: absolute; top: 2vh; left: calc(2.5vw + var(--safe-l)); font-weight: 900; text-shadow: 0 2px 0 #000, 0 0 4px rgba(0,0,0,0.6); }
 .hud-tl > div { margin-bottom: 0.4vh; display: flex; align-items: center; gap: 1vw; }
 .hud-tl .lbl { color: #ffd23f; font-size: calc(var(--u) * 3.2); width: calc(var(--u) * 15); }
@@ -160,16 +160,16 @@ canvas#gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: blo
 .flash-t { font-size: calc(var(--u) * 9); font-weight: 900; font-style: italic; text-shadow: 0 5px 0 #000, 0 0 12px rgba(0,0,0,0.6); -webkit-text-stroke: calc(var(--u) * 0.25) #000; }
 .flash-s { font-size: calc(var(--u) * 4); font-weight: 800; text-shadow: 0 2px 0 #000; }
 @keyframes flash { from { opacity: 0; transform: scale(1.6); } to { opacity: 1; transform: scale(1); } }
-#fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 40; }
-#error { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.75); }
+#fade { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: #000; opacity: 0; pointer-events: none; z-index: 40; }
+#error { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.75); }
 #error .panel { text-align: center; max-width: 80vw; font-size: calc(var(--u) * 3.8); }
 #error .btn { display: inline-block; margin: 1vh 1vw; }
 .toast { position: fixed; bottom: 8vh; left: 50%; transform: translateX(-50%); z-index: 80; background: rgba(0,0,0,0.8); padding: 1vh 3vw; border-radius: 3vh; font-size: calc(var(--u) * 3.6); }
-#rotate-hint { display: none; position: fixed; inset: 0; z-index: 90; background: #1b3a8c; align-items: center; justify-content: center; font-size: 6vw; font-weight: 900; text-align: center; }
+#rotate-hint { display: none; position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 90; background: #1b3a8c; align-items: center; justify-content: center; font-size: 6vw; font-weight: 900; text-align: center; }
 #rotate-hint.show { display: flex; }
 
 /* ---------- touch controls ---------- */
-#touch { position: fixed; inset: 0; z-index: 15; --ctl: 1; display: none; }
+#touch { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 15; --ctl: 1; display: none; }
 #joy-zone { position: absolute; left: 0; top: 18vh; bottom: 0; width: 45vw; touch-action: none; }
 #cam-zone { position: absolute; right: 0; top: 18vh; bottom: 0; width: 55vw; touch-action: none; }
 #joy-base { position: absolute; width: calc(var(--ctl) * 112px); height: calc(var(--ctl) * 112px); margin: calc(var(--ctl) * -56px) 0 0 calc(var(--ctl) * -56px);
@@ -190,3 +190,11 @@ canvas#gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: blo
 #btn-special { right: calc(4vw + var(--safe-r) + var(--ctl) * min(4vh, 20px)); bottom: calc(9vh + var(--ctl) * min(26vh, 128px)); background: rgba(255, 179, 0, 0.45); }
 
 @media (max-height: 380px) { .menu-col { top: 34vh; } .lvl-card { min-height: 60vh; } }
+
+/* Older Android System WebView (< Chrome 84) has no flexbox `gap`: approximate it with margins. */
+@supports not (aspect-ratio: 1) {
+  .bottom-row > * + *, .results .row > * + * { margin-left: 2vw; }
+  .char-row > * + *, .lvl-row > * + *, .settings-grid > * + * { margin-left: 1.5vw; }
+  .logo > * + *, .stat > * + *, .set-row > * + *, .hud-tl > div > * + *, .hud-lives > * + * { margin-left: 0.8vw; }
+  .hud-tr > * + * { margin-left: 1.6vw; }
+}
