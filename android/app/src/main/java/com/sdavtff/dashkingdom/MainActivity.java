@@ -52,6 +52,10 @@ public class MainActivity extends Activity {
             w.setAttributes(lp);
         }
 
+        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            // debug builds: inspect the game with chrome://inspect on a desktop
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
         webView = new WebView(this);
         webView.setBackgroundColor(Color.rgb(27, 58, 140));
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);

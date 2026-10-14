@@ -85,26 +85,37 @@ def main():
     os.makedirs(BUILD)
     os.makedirs(DIST, exist_ok=True)
 
-    # 1. resources
+    # 1. resources (compiled once)
     res_zip = os.path.join(BUILD, "res.zip")
     run([aapt2, "compile", "--dir", os.path.join(APP, "res"), "-o", res_zip])
-    gen = os.path.join(BUILD, "gen")
-    os.makedirs(gen)
-    base_apk = os.path.join(BUILD, "base.apk")
-    manifest = open(os.path.join(APP, "AndroidManifest.xml")).read()
-    manifest = manifest.replace("<manifest ", f'<manifest package="{package}" ', 1)
-    gen_manifest = os.path.join(BUILD, "AndroidManifest.xml")
-    open(gen_manifest, "w").write(manifest)
-    run([aapt2, "link", "-I", android_jar, "--manifest", gen_manifest,
-         "-A", os.path.join(APP, "assets"), "--java", gen, "--min-sdk-version", min_sdk,
-         "--target-sdk-version", target_sdk, "--version-name", version, "--version-code", version_code,
-         "-0", "js", "-0", "html", "-0", "css", "-o", base_apk, res_zip])
+    manifest_src = open(os.path.join(APP, "AndroidManifest.xml")).read()
+    manifest_src = manifest_src.replace("<manifest ", f'<manifest package="{package}" ', 1)
 
-    # 2. java -> class -> dex
+    def link(variant):
+        m = manifest_src
+        if variant == "debug":
+            m = m.replace("<application", '<application android:debuggable="true"', 1)
+        d = os.path.join(BUILD, variant)
+        os.makedirs(d, exist_ok=True)
+        mf = os.path.join(d, "AndroidManifest.xml")
+        open(mf, "w").write(m)
+        gen = os.path.join(d, "gen")
+        os.makedirs(gen, exist_ok=True)
+        apk = os.path.join(d, "base.apk")
+        run([aapt2, "link", "-I", android_jar, "--manifest", mf,
+             "-A", os.path.join(APP, "assets"), "--java", gen, "--min-sdk-version", min_sdk,
+             "--target-sdk-version", target_sdk, "--version-name", version, "--version-code", version_code,
+             "-0", "js", "-0", "html", "-0", "css", "-o", apk, res_zip])
+        return apk, gen
+
+    variants = [v for v in ("debug", "release") if a.only in (None, v)]
+    linked = {v: link(v) for v in variants}
+
+    # 2. java -> class -> dex (R.java is identical for both variants)
     classes = os.path.join(BUILD, "classes")
     os.makedirs(classes)
     srcs = []
-    for d in (os.path.join(APP, "java"), gen):
+    for d in (os.path.join(APP, "java"), linked[variants[0]][1]):
         for r, _, fs in os.walk(d):
             srcs += [os.path.join(r, f) for f in fs if f.endswith(".java")]
     run(["javac", "-nowarn", "-Xlint:-options", "-source", "8", "-target", "8", "-encoding", "UTF-8",
@@ -114,34 +125,33 @@ def main():
     run(["java", "-cp", dx, "com.android.dx.command.Main", "--dex", "--min-sdk-version=" + min_sdk,
          "--output=" + os.path.join(dex_dir, "classes.dex"), classes])
 
-    # 3. add dex to the apk
-    unaligned = os.path.join(BUILD, "unaligned.apk")
-    shutil.copy(base_apk, unaligned)
-    with zipfile.ZipFile(unaligned, "a", zipfile.ZIP_DEFLATED) as z:
-        z.write(os.path.join(dex_dir, "classes.dex"), "classes.dex")
-    aligned = os.path.join(BUILD, "aligned.apk")
-    zipalign(unaligned, aligned)
-
-    # 4. sign
+    # 3. add dex, align, sign
     signer = ["java", "-jar", apksigner, "sign", "--min-sdk-version", min_sdk,
               "--v1-signing-enabled", "true", "--v2-signing-enabled", "true", "--v3-signing-enabled", "true"]
     outputs = []
-    if a.only in (None, "debug"):
-        ks = os.path.join(BUILD, "..", "debug.keystore")
-        ensure_keystore(ks, "androiddebugkey", "android", "android", "CN=Android Debug,O=Android,C=US")
-        out = os.path.join(DIST, f"DashKingdom3D-v{version}-debug.apk")
-        run(signer + ["--ks", ks, "--ks-pass", "pass:android", "--key-pass", "pass:android",
-                      "--ks-key-alias", "androiddebugkey", "--out", out, aligned])
-        outputs.append(out)
-    if a.only in (None, "release"):
-        ks = os.environ.get("DK_RELEASE_KEYSTORE", os.path.join(ROOT, "keystore", "release.jks"))
-        sp = os.environ.get("DK_RELEASE_STOREPASS", "dashkingdom")
-        alias = os.environ.get("DK_RELEASE_KEYALIAS", "dashkingdom")
-        kp = os.environ.get("DK_RELEASE_KEYPASS", sp)
-        ensure_keystore(ks, alias, sp, kp, "CN=Dash Kingdom 3D,O=SonicXMario,C=BR")
-        out = os.path.join(DIST, f"DashKingdom3D-v{version}-release.apk")
-        run(signer + ["--ks", ks, "--ks-pass", "pass:" + sp, "--key-pass", "pass:" + kp,
-                      "--ks-key-alias", alias, "--out", out, aligned])
+    for v in variants:
+        base_apk = linked[v][0]
+        unaligned = os.path.join(BUILD, v, "unaligned.apk")
+        shutil.copy(base_apk, unaligned)
+        with zipfile.ZipFile(unaligned, "a", zipfile.ZIP_DEFLATED) as z:
+            z.write(os.path.join(dex_dir, "classes.dex"), "classes.dex")
+        aligned = os.path.join(BUILD, v, "aligned.apk")
+        zipalign(unaligned, aligned)
+        if v == "debug":
+            ks = os.path.join(ROOT, "build", "debug.keystore")
+            ensure_keystore(ks, "androiddebugkey", "android", "android", "CN=Android Debug,O=Android,C=US")
+            out = os.path.join(DIST, f"DashKingdom3D-v{version}-debug.apk")
+            run(signer + ["--ks", ks, "--ks-pass", "pass:android", "--key-pass", "pass:android",
+                          "--ks-key-alias", "androiddebugkey", "--out", out, aligned])
+        else:
+            ks = os.environ.get("DK_RELEASE_KEYSTORE", os.path.join(ROOT, "keystore", "release.jks"))
+            sp = os.environ.get("DK_RELEASE_STOREPASS", "dashkingdom")
+            alias = os.environ.get("DK_RELEASE_KEYALIAS", "dashkingdom")
+            kp = os.environ.get("DK_RELEASE_KEYPASS", sp)
+            ensure_keystore(ks, alias, sp, kp, "CN=Dash Kingdom 3D,O=SonicXMario,C=BR")
+            out = os.path.join(DIST, f"DashKingdom3D-v{version}-release.apk")
+            run(signer + ["--ks", ks, "--ks-pass", "pass:" + sp, "--key-pass", "pass:" + kp,
+                          "--ks-key-alias", alias, "--out", out, aligned])
         outputs.append(out)
 
     for out in outputs:
