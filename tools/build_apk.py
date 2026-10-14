@@ -72,8 +72,11 @@ def main():
         if not os.path.exists(f):
             sys.exit(f"Missing {f}. Run tools/fetch_toolchain.sh first.")
 
-    manifest_txt = open(os.path.join(APP, "AndroidManifest.xml")).read()
-    version = re.search(r'versionName="([^"]+)"', manifest_txt).group(1)
+    # single source of truth: android/app/build.gradle
+    gradle = open(os.path.join(ROOT, "android", "app", "build.gradle")).read()
+    g = lambda key: re.search(key + r"\s+'?([\w.]+)'?", gradle).group(1)
+    package, version, version_code = g("applicationId"), g("versionName"), g("versionCode")
+    min_sdk, target_sdk = g("minSdk"), g("targetSdk")
 
     if not a.skip_web:
         run(["npm", "run", "build"], cwd=os.path.join(ROOT, "game"))
@@ -88,9 +91,14 @@ def main():
     gen = os.path.join(BUILD, "gen")
     os.makedirs(gen)
     base_apk = os.path.join(BUILD, "base.apk")
-    run([aapt2, "link", "-I", android_jar, "--manifest", os.path.join(APP, "AndroidManifest.xml"),
-         "-A", os.path.join(APP, "assets"), "--java", gen, "--min-sdk-version", "24",
-         "--target-sdk-version", "34", "--version-name", version, "-o", base_apk, res_zip])
+    manifest = open(os.path.join(APP, "AndroidManifest.xml")).read()
+    manifest = manifest.replace("<manifest ", f'<manifest package="{package}" ', 1)
+    gen_manifest = os.path.join(BUILD, "AndroidManifest.xml")
+    open(gen_manifest, "w").write(manifest)
+    run([aapt2, "link", "-I", android_jar, "--manifest", gen_manifest,
+         "-A", os.path.join(APP, "assets"), "--java", gen, "--min-sdk-version", min_sdk,
+         "--target-sdk-version", target_sdk, "--version-name", version, "--version-code", version_code,
+         "-0", "js", "-0", "html", "-0", "css", "-o", base_apk, res_zip])
 
     # 2. java -> class -> dex
     classes = os.path.join(BUILD, "classes")
@@ -103,7 +111,7 @@ def main():
          "-bootclasspath", android_jar, "-d", classes] + srcs)
     dex_dir = os.path.join(BUILD, "dex")
     os.makedirs(dex_dir)
-    run(["java", "-cp", dx, "com.android.dx.command.Main", "--dex", "--min-sdk-version=24",
+    run(["java", "-cp", dx, "com.android.dx.command.Main", "--dex", "--min-sdk-version=" + min_sdk,
          "--output=" + os.path.join(dex_dir, "classes.dex"), classes])
 
     # 3. add dex to the apk
@@ -115,7 +123,7 @@ def main():
     zipalign(unaligned, aligned)
 
     # 4. sign
-    signer = ["java", "-jar", apksigner, "sign", "--min-sdk-version", "24",
+    signer = ["java", "-jar", apksigner, "sign", "--min-sdk-version", min_sdk,
               "--v1-signing-enabled", "true", "--v2-signing-enabled", "true", "--v3-signing-enabled", "true"]
     outputs = []
     if a.only in (None, "debug"):
@@ -137,7 +145,7 @@ def main():
         outputs.append(out)
 
     for out in outputs:
-        run(["java", "-jar", apksigner, "verify", "--verbose", "--min-sdk-version", "24", out])
+        run(["java", "-jar", apksigner, "verify", "--verbose", "--min-sdk-version", min_sdk, out])
         print(f"OK {out} ({os.path.getsize(out) / 1024 / 1024:.2f} MB)")
         idsig = out + ".idsig"
         if os.path.exists(idsig):
