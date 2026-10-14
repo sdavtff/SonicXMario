@@ -65,13 +65,17 @@ jobs:
           path: emu-results/
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     needs: [build, emulator-test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: v1.0.0
+          name: Dash Kingdom 3D v1.0.0
+          target_commitish: ${{ github.sha }}
+          make_latest: true
           files: |
             dist/DashKingdom3D-v1.0.0-release.apk
             dist/DashKingdom3D-v1.0.0-debug.apk
