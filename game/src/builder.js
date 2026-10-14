@@ -327,7 +327,7 @@ export class LevelBuilder {
     if (this.deco.length) {
       const merged = mergeGeometries(this.deco, false);
       const m = new THREE.Mesh(merged, new THREE.MeshLambertMaterial({ vertexColors: true }));
-      m.castShadow = this.g.quality !== 'low'; m.receiveShadow = false;
+      m.castShadow = this.g.quality === 'high'; m.receiveShadow = false;
       this.scene.add(m);
       this.deco.length = 0;
     }

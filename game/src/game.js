@@ -76,6 +76,7 @@ export class Game {
     this.totalRings = this.pickups.total.rings; this.totalCoins = this.pickups.total.coins;
     this.levelInfo = info;
 
+    this.setupCulling();
     this.player = new Player(this, this.charId);
     this.checkpoint = { p: this.startPos.p.clone(), yaw: this.startPos.yaw };
     this.player.spawn(this.checkpoint.p, this.checkpoint.yaw);
@@ -85,6 +86,46 @@ export class Game {
     audio.playMusic(theme.music);
     this.app.ui.hudReset(this);
     this.message(this.def.name, '#ffffff', 2.2, this.def.objective);
+  }
+
+  // Distance culling for level objects (entities, props). Large merged meshes (terrain,
+  // decoration, sky, fluids) and instanced rings are always drawn. Uses render layers so
+  // it never fights with objects that toggle their own .visible flag.
+  setupCulling() {
+    const keep = new Set([this.sky]);
+    this.cullList = [];
+    const box = new THREE.Box3(), c = new THREE.Vector3(), sz = new THREE.Vector3();
+    for (const o of this.scene.children) {
+      if (keep.has(o) || o.isLight || o.isInstancedMesh || o.isPoints) continue;
+      box.setFromObject(o);
+      if (box.isEmpty()) continue;
+      box.getCenter(c); box.getSize(sz);
+      if (Math.max(sz.x, sz.z) > 40) continue; // big merged geometry
+      const meshes = [];
+      o.traverse((m) => { if (m.isMesh) meshes.push(m); });
+      // shadows: only on high quality do small props/enemies cast them
+      if (this.quality !== 'high') meshes.forEach((m) => { m.castShadow = false; });
+      this.cullList.push({ o, meshes, near: true, ox: c.x - o.position.x, oz: c.z - o.position.z });
+    }
+    this.cullT = 0;
+  }
+  updateCulling(dt) {
+    this.cullT -= dt;
+    if (this.cullT > 0) return;
+    this.cullT = 0.25;
+    const p = this.player.pos;
+    const R = this.quality === 'low' ? 65 : this.quality === 'medium' ? 85 : 120;
+    const R2 = R * R;
+    for (const e of this.cullList) {
+      const o = e.o;
+      // objects move (enemies): use the live world position of the root
+      const dx = o.position.x + e.ox - p.x, dz = o.position.z + e.oz - p.z;
+      const near = dx * dx + dz * dz < R2;
+      if (near !== e.near) {
+        e.near = near;
+        for (const m of e.meshes) m.layers.set(near ? 0 : 1);
+      }
+    }
   }
 
   // ------------------------------------------------ API used by entities
@@ -285,6 +326,7 @@ export class Game {
       if (this.winT > 3.2 && !this.resultsShown) { this.resultsShown = true; this.app.showResults(this); }
     }
 
+    this.updateCulling(dt);
     this.cam.update(dt, p, input, this.settings, this.bosses.find((b) => b.active));
     // shadow light follows the player
     this.sun.position.set(p.pos.x + this.sunDir.x * 60, p.pos.y + this.sunDir.y * 60, p.pos.z + this.sunDir.z * 60);
