@@ -164,7 +164,7 @@ export class Player {
     const dx = this.pos.x - (fromPos ? fromPos.x : this.pos.x - Math.sin(this.facing));
     const dz = this.pos.z - (fromPos ? fromPos.z : this.pos.z - Math.cos(this.facing));
     const d = Math.hypot(dx, dz) || 1;
-    this.body.vel.set((dx / d) * 7, 8, (dz / d) * 7);
+    this.body.vel.set((dx / d) * 5, 7.5, (dz / d) * 5);
     this.body.grounded = false;
     this.state = 'hurt'; this.stateTime = 0;
     this.rail = null; this.loop = null;
@@ -371,7 +371,7 @@ export class Player {
       if (dir.m > 0) {
         if (s < 0.5) { vdx = dir.x; vdz = dir.z; }
         const dot = vdx * dir.x + vdz * dir.z;
-        if (b.grounded && dot < -0.6 && s > 6) {
+        if (b.grounded && dot < -0.6 && s > 2) {
           // skid / brake
           s = Math.max(0, s - c.decel * 2.2 * dt);
           if (s < 1) { vdx = dir.x; vdz = dir.z; }

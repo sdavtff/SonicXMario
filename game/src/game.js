@@ -130,6 +130,15 @@ export class Game {
     const v = new THREE.Vector3(Math.sin(f) * 16, -2, Math.cos(f) * 16);
     this.spawn(new Projectile(this, pos, v, { friendly: true, bounce: true, grav: 30, color: 0xff7a1a, r: 0.3, life: 2.2 }));
   }
+  // Removes every hostile projectile / shockwave / warning / meteor (used when a boss falls).
+  clearHazards() {
+    for (const e of this.spawned) {
+      if (!e.alive) continue;
+      const hostile = (e instanceof Projectile && !e.friendly) || e.maxR !== undefined || e.onImpact || e.gy !== undefined;
+      if (hostile) { e.alive = false; if (e.mesh) this.scene.remove(e.mesh); }
+    }
+    for (const e of this.enemies) if (e.alive && !e.dying && e.type === 'drone') e.kill('hit');
+  }
   spawnItem(kind, pos, rise) {
     // power-ups adapt to the character
     let k = kind;

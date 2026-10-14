@@ -526,7 +526,8 @@ export class MovingPlatform {
     const p = this.path, o = this.origin;
     let x = o.x, y = o.y, z = o.z;
     if (p.type === 'line') {
-      const k = (1 - Math.cos((this.t / p.period) * Math.PI * 2)) / 2;
+      // eased back-and-forth with a short pause at each end (easier to board)
+      const k = clamp(((1 - Math.cos((this.t / p.period) * Math.PI * 2)) / 2 - 0.5) * 1.35 + 0.5, 0, 1);
       x += (p.to[0] - o.x) * k; y += (p.to[1] - o.y) * k; z += (p.to[2] - o.z) * k;
     } else {
       const a = (this.t / p.period) * Math.PI * 2;

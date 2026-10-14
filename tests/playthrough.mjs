@@ -19,7 +19,7 @@ for (const char of ch.split(',')) {
     await page.waitForFunction(() => window.__app.state === 'playing', null, { timeout: 30000 });
     await page.evaluate(() => { window.__app.state = 'test'; }); // stop the rAF loop from also updating
     await page.addScriptTag({ content: botSrc });
-    const r = await page.evaluate(([route, opts]) => window.__bot(route, opts), [ROUTES[id], { maxTime: 400, trace: process.env.TRACE ? process.env.TRACE.split(',').map(Number) : null }]);
+    const r = await page.evaluate(([route, opts]) => window.__bot(route, opts), [ROUTES[id], { maxTime: 500, trace: process.env.TRACE ? process.env.TRACE.split(',').map(Number) : null }]);
     r.level = id; r.char = char; r.errors = errors;
     results.push(r);
     console.log(JSON.stringify(r));

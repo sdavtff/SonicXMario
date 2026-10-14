@@ -282,7 +282,7 @@ function lavaCastle(b) {
   b.plat(0, 55, 4, 4, 0, 1, 'castle');
   b.mover(0, 0, 59, 4, 4, { type: 'line', to: [0, 0, 70], period: 5 }, 0x5a4a50);
   b.plat(0, 74, 4, 4, 0, 1, 'castle');
-  b.mover(-5, 0, 81, 4, 4, { type: 'line', to: [5, 0, 81], period: 4.5 }, 0x5a4a50);
+  b.plat(0, 81, 4, 4, 0, 1, 'castle');
   b.plat(0, 88, 4, 4, 0, 1, 'castle');
   b.bubble(2.8, -3, 64, 7, 2.6, 0); b.bubble(-2.8, -3, 78, 7, 3.0, 1); b.bubble(3, -3, 91, 7, 2.4, 0.5);
   b.rings(0, 1.5, 55, 0, 1.5, 88, 6);
@@ -298,17 +298,17 @@ function lavaCastle(b) {
   b.enemy('firewalker', 2, 0, 126, { patrol: 2 });
   b.rings(0, 1, 124, 0, 1, 132, 4);
   // lava sea 2
-  b.falling(0, 0, 150, 3, 3, 0x6a5a60); b.falling(0, 0, 155, 3, 3, 0x6a5a60); b.falling(0, 0, 160, 3, 3, 0x6a5a60);
+  b.falling(0, 0, 149.5, 4, 4, 0x6a5a60); b.falling(0, 0, 155.5, 4, 4, 0x6a5a60); b.falling(0, 0, 161.5, 4, 4, 0x6a5a60);
   b.plat(0, 166, 4, 4, 0, 1, 'castle');
   b.mover(0, 0, 176, 4, 4, { type: 'circle', radius: 4, period: 6 }, 0x5a4a50);
   b.plat(9, 176, 3, 3, 1, 1, 'castle');
   b.medal(9, 2.6, 176);
   b.plat(0, 186, 4, 4, 0, 1, 'castle');
-  b.falling(0, 0, 191, 3, 3, 0x6a5a60); b.falling(0, 0, 196, 3, 3, 0x6a5a60);
-  b.enemy('buzzer', 0, 4, 160, { patrol: 3 });
-  b.enemy('buzzer', 0, 4, 186, { patrol: 3 });
+  b.falling(0, 0, 191, 4, 4, 0x6a5a60); b.falling(0, 0, 196, 4, 4, 0x6a5a60);
+  b.enemy('buzzer', 2, 4, 232, { patrol: 2 });
+  b.enemy('buzzer', 0, 4, 214, { patrol: 3 });
   b.bubble(-3, -3, 170, 7, 2.2, 0.3); b.bubble(3, -3, 182, 7, 2.6, 1.2);
-  b.rings(0, 1.5, 150, 0, 1.5, 160, 3);
+  b.rings(0, 1.5, 149.5, 0, 1.5, 161.5, 3);
   // last corridor
   b.box(0, 222, 14, 46, 0, 30, 'castle');
   sideWalls(b, 199, 245, 7, 8, 'castle', 6);
@@ -337,11 +337,12 @@ function finalDimension(b) {
   b.start(0, 0.1, 0, 0);
   b.box(0, 15, 12, 50, 0, 6, 'crystal');
   b.hint(0, 6, 5, 'Dimensão Final: plataformas piscam! Observe o ritmo.');
-  b.enemy('drone', 0, 3, 30, { patrol: 3 });
+  b.enemy('drone', 0, 3, 16, { patrol: 3 });
   b.rings(0, 1, 8, 0, 1, 26, 6);
   b.monitor(4, 0, 12, 'heart');
-  b.blink(0, 0, 45, 4, 4, 3, 0); b.blink(0, 0, 51, 4, 4, 3, 0.75);
-  b.blink(0, 0, 57, 4, 4, 3, 1.5); b.blink(0, 0, 63, 4, 4, 3, 2.25);
+  // each platform appears while the previous one is still solid (phase lags by 1/4 period)
+  b.blink(0, 0, 45, 4, 4, 3, 0); b.blink(0, 0, 51, 4, 4, 3, 2.25);
+  b.blink(0, 0, 57, 4, 4, 3, 1.5); b.blink(0, 0, 63, 4, 4, 3, 0.75);
   b.rings(0, 1.5, 45, 0, 1.5, 63, 4);
   // F2 + low gravity
   b.box(0, 85, 14, 34, 0, 6, 'crystal');
@@ -379,9 +380,9 @@ function finalDimension(b) {
   // F5
   b.box(0, 300, 14, 36, 6, 6, 'crystal');
   b.spikes(0, 6, 295, 6, 3);
-  b.enemy('buzzer', 0, 10, 300, { patrol: 3 });
+  b.enemy('buzzer', 0, 10, 290, { patrol: 3 });
   b.monitor(-4, 6, 290, 'shield'); b.monitor(4, 6, 306, 'star');
-  b.blink(9, 7, 305, 3, 3, 2.5, 0); b.blink(14, 8, 305, 3, 3, 2.5, 0.8); b.blink(19, 9, 305, 3, 3, 2.5, 1.6);
+  b.blink(9, 7, 305, 3, 3, 2.5, 0); b.blink(14, 8, 305, 3, 3, 2.5, 1.875); b.blink(19, 9, 305, 3, 3, 2.5, 1.25);
   b.plat(23, 305, 3, 3, 9, 1, 'crystal');
   b.medal(23, 10.6, 305);
   b.rings(0, 7, 286, 0, 7, 316, 6);

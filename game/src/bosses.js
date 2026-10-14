@@ -20,7 +20,7 @@ class Shockwave {
     this.mesh.material.opacity = Math.max(0, 1 - this.r / this.maxR);
     const p = this.game.player;
     const d = Math.hypot(p.pos.x - this.x, p.pos.z - this.z);
-    if (p.alive && Math.abs(d - this.r) < 0.6 && p.pos.y < this.y + 0.7) p.hurt(new THREE.Vector3(this.x, this.y, this.z));
+    if (p.alive && Math.abs(d - this.r) < 0.6 && p.pos.y < this.y + 0.5) p.hurt(new THREE.Vector3(this.x, this.y, this.z));
     if (this.r > this.maxR) { this.alive = false; this.game.scene.remove(this.mesh); }
   }
 }
@@ -81,7 +81,7 @@ class Boss {
     audio.sfx('roar');
     this.game.camShake(0.5);
   }
-  setState(s) { this.state = s; this.t = 0; }
+  setState(s) { this.state = s; this.t = 0; this.inited = false; }
   takeHit(dmg = 1) {
     if (this.inv > 0 || this.defeated) return false;
     const g = this.game;
@@ -91,7 +91,7 @@ class Boss {
     g.addScore(500, this.targetPos());
     g.fx.burst(this.targetPos(), 25, 0xffffff, 8, 0.6, 4);
     g.bossBar(this.name, this.hp, this.maxHp);
-    if (this.hp <= 0) { this.defeated = true; this.setState('dying'); audio.stopMusic(); }
+    if (this.hp <= 0) { this.defeated = true; this.setState('dying'); audio.stopMusic(); g.clearHazards(); this.laser && (this.laser.visible = false); }
     else this.onHurt();
     return true;
   }
@@ -105,17 +105,20 @@ class Boss {
     if (hs && this.vulnerable && Math.hypot(hs.x - c.x, hs.y - c.y, hs.z - c.z) < hs.r + r) { this.takeHit(); return; }
     if (!touches(p, c.x, c.y, c.z, r)) return;
     const ak = p.attackKind();
-    const above = p.vel.y < 0 && p.pos.y > c.y;
-    if (this.vulnerable && (ak || above)) {
-      if (this.takeHit()) {
-        const dx = p.pos.x - c.x, dz = p.pos.z - c.z, d = Math.hypot(dx, dz) || 1;
+    const above = p.vel.y < 0 && p.pos.y > c.y - r * 0.5;
+    const dx = p.pos.x - c.x, dz = p.pos.z - c.z, d = Math.hypot(dx, dz) || 1;
+    if (this.vulnerable) {
+      // a dazed boss never hurts on contact: stomp or attack it, otherwise get nudged away
+      if ((ak || above) && this.takeHit()) {
         p.state = 'normal';
+        p.hurtTime = Math.max(p.hurtTime, 0.9); // brief grace period after a successful hit
         p.bounce(12);
         p.body.vel.x = (dx / d) * 9; p.body.vel.z = (dz / d) * 9;
+      } else if (!ak && !above) {
+        p.body.vel.x += (dx / d) * 2; p.body.vel.z += (dz / d) * 2;
       }
-    } else if (this.inv <= 0 || !this.vulnerable) {
+    } else {
       p.hurt(c);
-      const dx = p.pos.x - c.x, dz = p.pos.z - c.z, d = Math.hypot(dx, dz) || 1;
       if (p.alive) { p.body.vel.x = (dx / d) * 12; p.body.vel.z = (dz / d) * 12; }
     }
   }
@@ -185,7 +188,8 @@ export class Magmor extends Boss {
         if (this.t > 1.6) { this.fired = false; P.jaw.position.y = -0.45; this.setState('jump'); }
         break;
       case 'jump': {
-        if (this.t < 0.01) {
+        if (!this.inited) {
+          this.inited = true;
           this.jumpFrom = this.pos.clone();
           const tx = p.pos.x, tz = p.pos.z;
           const d = Math.hypot(tx - this.c.x, tz - this.c.z);
@@ -295,7 +299,8 @@ export class Vortex extends Boss {
         if (this.t > 1.4) { this.fired = false; this.setState('float'); }
         break;
       case 'slam': {
-        if (this.t < 0.01) {
+        if (!this.inited) {
+          this.inited = true;
           this.slamTo = new THREE.Vector3(p.pos.x, this.c.y, p.pos.z);
           const dx = this.slamTo.x - this.c.x, dz = this.slamTo.z - this.c.z, d = Math.hypot(dx, dz), m = this.R - 3.5;
           if (d > m) { this.slamTo.x = this.c.x + dx / d * m; this.slamTo.z = this.c.z + dz / d * m; }
@@ -323,7 +328,8 @@ export class Vortex extends Boss {
         if (this.pos.y > hoverY) this.setState('float');
         break;
       case 'laser': {
-        if (this.t < 0.01) { this.laserFrom = this.pos.clone(); audio.sfx('laser'); }
+        if (!this.inited) {
+          this.inited = true; this.laserFrom = this.pos.clone(); audio.sfx('laser'); }
         const T = 4.5;
         const k = Math.min(1, this.t / 0.8);
         this.pos.x += (this.c.x - this.pos.x) * Math.min(1, dt * 3);
@@ -358,7 +364,8 @@ export class Vortex extends Boss {
         if (this.t > 1.2) { this.fired = false; this.setState('float'); }
         break;
       case 'meteors':
-        if (this.t < 0.01) {
+        if (!this.inited) {
+          this.inited = true;
           for (let i = 0; i < 7; i++) {
             const a = Math.random() * Math.PI * 2, r = Math.random() * 5;
             const x = (i === 0 ? p.pos.x : p.pos.x + Math.cos(a) * r), z = (i === 0 ? p.pos.z : p.pos.z + Math.sin(a) * r);

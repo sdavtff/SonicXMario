@@ -31,7 +31,12 @@ window.__bot = function run(route, opts = {}) {
       waitT = 0; arrived = false;
     }
     wasAlive = alive;
-    if (p.hearts < lastHearts) { hurts++; events.push(`hurt@${p.pos.toArray().map((v) => v.toFixed(1)).join(',')}`); }
+    if (p.hearts < lastHearts) {
+      hurts++;
+      const B = g.bosses[0];
+      const near = g.spawned.filter((e) => e.alive && e.mesh && e.vel && e.mesh.position.distanceTo(p.center()) < 2.5).length;
+      events.push(`hurt@${p.pos.toArray().map((v) => v.toFixed(1)).join(',')}` + (B && B.active ? ` boss=${B.state} d=${Math.hypot(B.pos.x - p.pos.x, B.pos.z - p.pos.z).toFixed(1)} vuln=${B.vulnerable} proj=${near} pst=${p.state}` : ''));
+    }
     lastHearts = p.hearts;
 
     let mx = 0, my = 0;
@@ -39,7 +44,51 @@ window.__bot = function run(route, opts = {}) {
     while (wi < route.length - 1 && !route[wi][2] && p.pos.z > route[wi][1] + 2) { wi++; arrived = false; }
     const wp = route[Math.min(wi, route.length - 1)];
     const o = wp[2] || {};
-    if (alive && p.state !== 'loop' && p.state !== 'rail' && p.state !== 'warp') {
+    if (o.boss && g.bosses.length && !g.bosses[0].active) { /* walk in first */ }
+    if (alive && o.boss && g.bosses.length) {
+      const B = g.bosses[0];
+      const yaw = g.cam.yaw, fx = Math.sin(yaw), fz = Math.cos(yaw), rx = -Math.cos(yaw), rz = Math.sin(yaw);
+      let tx, tz, mm = 1;
+      const bx = B.pos.x - p.pos.x, bz = B.pos.z - p.pos.z, bd = Math.hypot(bx, bz) || 1;
+      const cx = p.pos.x - B.c.x, cz = p.pos.z - B.c.z, cd = Math.hypot(cx, cz) || 1;
+      if (!B.alive || B.defeated) { tx = B.c.x; tz = B.c.z; }
+      else if (B.vulnerable && B.inv <= 0 && !g.spawned.some((e) => e.alive && e.maxR !== undefined && e.r < Math.hypot(p.pos.x - e.x, p.pos.z - e.z) + 1)) {
+        tx = B.pos.x; tz = B.pos.z;
+        if (p.body.grounded && jumpHold <= 0) {
+          if (p.id === 'zip' && bd < 5.5) press(20);
+          if (p.id === 'rocco' && bd < 3.6) input.attackPressed = true;
+          else if (p.id === 'rocco' && bd < 5) press(20);
+        }
+      } else {
+        // orbit the arena centre, keeping away from the boss
+        const want = Math.min(B.R - 4, 10);
+        const ang = Math.atan2(cz, cx) + 0.9;
+        tx = B.c.x + Math.cos(ang) * want; tz = B.c.z + Math.sin(ang) * want;
+        if (bd < 7) { tx = p.pos.x - bx / bd * 6; tz = p.pos.z - bz / bd * 6; }
+      }
+      // dodge: telegraph circles
+      for (const e of g.spawned) {
+        if (!e.alive) continue;
+        if (e.onImpact && Math.hypot(p.pos.x - e.x, p.pos.z - e.z) < e.r + 1.5) {
+          const ex = p.pos.x - e.x, ez = p.pos.z - e.z, ed = Math.hypot(ex, ez) || 1;
+          tx = p.pos.x + ex / ed * 5 - cx / cd * 2; tz = p.pos.z + ez / ed * 5 - cz / cd * 2;
+        }
+        // shockwave about to reach us -> jump
+        if (e.maxR !== undefined && e.speed) {
+          const sd = Math.hypot(p.pos.x - e.x, p.pos.z - e.z);
+          if (sd > e.r && sd - e.r < 1.6 + e.speed * 0.06 && p.body.grounded && jumpHold <= 0) press(20);
+        }
+        // hostile projectile close -> jump
+        if (e.vel && e.r && !e.friendly && e.mesh && p.body.grounded && jumpHold <= 0 && e.mesh.position.distanceTo(p.center()) < 3) press(20);
+      }
+      if (B.laser && B.laser.visible && p.body.grounded && jumpHold <= 0) {
+        const a = B.laser.rotation.y, dx2 = p.pos.x - B.pos.x, dz2 = p.pos.z - B.pos.z;
+        const along = dx2 * Math.sin(a) + dz2 * Math.cos(a), perp = dx2 * Math.cos(a) - dz2 * Math.sin(a);
+        if (along > 0 && Math.abs(perp) < 2.4) press(20);
+      }
+      const dx = tx - p.pos.x, dz = tz - p.pos.z, d = Math.hypot(dx, dz);
+      if (d > 0.6) { const ux = dx / d, uz = dz / d; my = (ux * fx + uz * fz) * mm; mx = (ux * rx + uz * rz) * mm; }
+    } else if (alive && p.state !== 'loop' && p.state !== 'rail' && p.state !== 'warp') {
       const dx = wp[0] - p.pos.x, dz = wp[1] - p.pos.z;
       const d = Math.hypot(dx, dz);
       const r = o.r || 1.6;
@@ -47,7 +96,11 @@ window.__bot = function run(route, opts = {}) {
       if (arrived) {
         const holdPos = () => {
           // stand still on moving platforms; otherwise walk back to the spot if we drifted
-          if (d > r && !(p.body.ground && p.body.ground.dynamic)) {
+          const sp = p.speed;
+          if (sp > 2.5) {
+            // brake: release the stick
+            mx = 0; my = 0;
+          } else if (d > r && !(p.body.ground && p.body.ground.dynamic)) {
             const yaw = g.cam.yaw, ux = dx / d, uz = dz / d;
             my = (ux * Math.sin(yaw) + uz * Math.cos(yaw)) * 0.5; mx = (ux * -Math.cos(yaw) + uz * Math.sin(yaw)) * 0.5;
           }
@@ -102,6 +155,7 @@ window.__bot = function run(route, opts = {}) {
     if (opts.trace && p.pos.z > opts.trace[0] && p.pos.z < opts.trace[1] && Math.round(t * 60) % 5 === 0) events.push(['T', wi, p.state, p.mode, p.pos.toArray().map((v) => v.toFixed(1)).join(','), p.vel.toArray().map((v) => v.toFixed(1)).join(','), mx.toFixed(2), my.toFixed(2), g.cam.yaw.toFixed(2)].join(' '));
     // stuck detection (no forward progress for a long time)
     if (p.pos.z > lastZ + 0.5) { lastZ = p.pos.z; stuckT = 0; } else stuckT += dt;
+    if (o.boss) stuckT = 0;
     if (stuckT > (opts.stuck || 25)) return { ok: false, reason: 'stuck', at: p.pos.toArray().map((v) => +v.toFixed(1)), wi, state: p.state, events };
     if (wi >= route.length) { /* all waypoints passed; keep running toward last */ wi = route.length - 1; }
   }
